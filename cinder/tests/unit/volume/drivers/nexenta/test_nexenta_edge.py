@@ -47,7 +47,8 @@ MOCK_VOL3 = {
 MOCK_SNAP = {
     'id': 'snap1',
     'name': 'snap1',
-    'volume_name': 'vol1'
+    'volume_name': 'vol1',
+    'volume_size': 1
 }
 NEW_VOL_SIZE = 2
 ISCSI_TARGET_NAME = 'iscsi_target_name'
