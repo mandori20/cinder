@@ -33,8 +33,8 @@ class NexentaEdgeJSONProxy(object):
         requests.exceptions.ConnectTimeout
     )
 
-    def __init__(self, protocol, host, port, path, user, password, auto=False,
-                 method=None, session=None):
+    def __init__(self, protocol, host, port, path, user, password, verify,
+                 auto=False, method=None, session=None):
         if session:
             self.session = session
         else:
@@ -42,6 +42,7 @@ class NexentaEdgeJSONProxy(object):
             self.session.auth = (user, password)
             self.session.headers.update({'Content-Type': 'application/json'})
         self.protocol = protocol.lower()
+        self.verify = verify
         self.host = host
         self.port = port
         self.path = path
@@ -71,7 +72,7 @@ class NexentaEdgeJSONProxy(object):
     @retry(retry_exc_tuple, interval=1, retries=6)
     def __call__(self, *args):
         self.path = args[0]
-        kwargs = {'timeout': TIMEOUT}
+        kwargs = {'timeout': TIMEOUT, 'verify': self.verify}
         data = None
         if len(args) > 1:
             data = json.dumps(args[1])

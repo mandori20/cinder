@@ -57,6 +57,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
                 options.NEXENTA_DATASET_OPTS)
             self.configuration.append_config_values(
                 options.NEXENTA_EDGE_OPTS)
+        self.verify_ssl = self.configuration.driver_ssl_cert_verify
         self.restapi_protocol = self.configuration.nexenta_rest_protocol
         self.restapi_host = self.configuration.nexenta_rest_address
         self.restapi_port = self.configuration.nexenta_rest_port
@@ -99,7 +100,8 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
         try:
             self.restapi = jsonrpc.NexentaEdgeJSONProxy(
                 protocol, self.restapi_host, self.restapi_port, '/',
-                self.restapi_user, self.restapi_password, auto=auto)
+                self.restapi_user, self.restapi_password,
+                self.verify_ssl, auto=auto)
 
             rsp = self.restapi.get(
                 'service/' + self.iscsi_service + '/iscsi/status')
