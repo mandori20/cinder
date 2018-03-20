@@ -72,6 +72,7 @@ class TestNexentaEdgeISCSIDriver(test.TestCase):
         self.cfg.nexenta_rest_protocol = 'http'
         self.cfg.nexenta_iscsi_target_portal_port = 3260
         self.cfg.nexenta_rest_user = 'admin'
+        self.cfg.driver_ssl_cert_verify = False
         self.cfg.nexenta_rest_password = 'admin'
         self.cfg.nexenta_lun_container = NEDGE_BUCKET
         self.cfg.nexenta_iscsi_service = NEDGE_SERVICE

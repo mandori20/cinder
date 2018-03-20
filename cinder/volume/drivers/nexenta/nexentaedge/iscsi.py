@@ -39,9 +39,10 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
         1.0.0 - Initial driver version.
         1.0.1 - Moved opts to options.py.
         1.0.2 - Added HA support.
+        1.0.3 - Driver re-introduced in OpenStack.
     """
 
-    VERSION = '1.0.2'
+    VERSION = '1.0.3'
 
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "Nexenta_Edge_CI"
@@ -212,29 +213,38 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
                               'newSizeMB': new_size * units.Ki})
         except exception.VolumeBackendAPIException:
             with excutils.save_and_reraise_exception():
-                LOG.exception('Error extending volume')
+                LOG.exception('Error extending volume %s', volume['name'])
 
     def create_volume_from_snapshot(self, volume, snapshot):
-        self.restapi.put(
-            'service/' + self.iscsi_service + '/iscsi/snapshot/clone',
-            {
-                'objectPath': self.bucket_path + '/' +
-                snapshot['volume_name'],
-                'clonePath': self.bucket_path + '/' + volume['name'],
-                'snapName': snapshot['name']
-            })
+        try:
+            self.restapi.put(
+                'service/' + self.iscsi_service + '/iscsi/snapshot/clone',
+                {
+                    'objectPath': self.bucket_path + '/' +
+                    snapshot['volume_name'],
+                    'clonePath': self.bucket_path + '/' + volume['name'],
+                    'snapName': snapshot['name']
+                })
+        except exception.VolumeBackendAPIException:
+            with excutils.save_and_reraise_exception():
+                LOG.exception(
+                    'Error creating volume from snapshot %s', snapshot['name'])
         if (('size' in volume) and (
                 volume['size'] > snapshot['volume_size'])):
             self.extend_volume(volume, volume['size'])
 
     def create_snapshot(self, snapshot):
-        self.restapi.post(
-            'service/' + self.iscsi_service + '/iscsi/snapshot',
-            {
-                'objectPath': self.bucket_path + '/' +
-                snapshot['volume_name'],
-                'snapName': snapshot['name']
-            })
+        try:
+            self.restapi.post(
+                'service/' + self.iscsi_service + '/iscsi/snapshot',
+                {
+                    'objectPath': self.bucket_path + '/' +
+                    snapshot['volume_name'],
+                    'snapName': snapshot['name']
+                })
+        except exception.VolumeBackendAPIException:
+            with excutils.save_and_reraise_exception():
+                LOG.exception('Error creating snapshot %s', snapshot['name'])
 
     def delete_snapshot(self, snapshot):
         self.restapi.delete(
