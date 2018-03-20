@@ -247,13 +247,16 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
                 LOG.exception('Error creating snapshot %s', snapshot['name'])
 
     def delete_snapshot(self, snapshot):
-        self.restapi.delete(
-            'service/' + self.iscsi_service + '/iscsi/snapshot',
-            {
-                'objectPath': self.bucket_path + '/' +
-                snapshot['volume_name'],
-                'snapName': snapshot['name']
-            })
+        try:
+            self.restapi.delete(
+                'service/' + self.iscsi_service + '/iscsi/snapshot',
+                {
+                    'objectPath': self.bucket_path + '/' +
+                    snapshot['volume_name'],
+                    'snapName': snapshot['name']
+                })
+        except exception.VolumeBackendAPIException:
+            LOG.info('Error deleting snapshot %s', snapshot['name'])
 
     @staticmethod
     def _get_clone_snapshot_name(volume):
