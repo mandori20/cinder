@@ -60,7 +60,7 @@ class NexentaEdgeJSONProxy(object):
         if name in ('get', 'post', 'put', 'delete'):
             return NexentaEdgeJSONProxy(
                 self.protocol, self.host, self.port, self.path, self.user,
-                self.password, self.auto, name, self.session)
+                self.password, self.verify, self.auto, name, self.session)
         return super(NexentaEdgeJSONProxy, self).__getattr__(name)
 
     def __hash__(self):
