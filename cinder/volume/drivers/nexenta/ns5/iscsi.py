@@ -341,17 +341,10 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
                 else:
                     raise
         target_name = self.target_prefix + '-' + volume['name']
-        url = 'san/iscsi/targets/%s' % target_name
-        try:
-            self.nef.get(url)
-        except exception.NexentaException as e:
-            if 'ENOENT' in e.args[0]:
-                LOG.debug('iSCSI target %s is already deleted, skipping' % (
-                    target_name))
-                return
-            else:
-                raise
-        self.nef.delete(url)
+        url = 'san/iscsi/targets?name=%s' % target_name
+        if self.nef.get(url)['data']:
+            url = 'san/iscsi/targets/%s' % target_name
+            self.nef.delete(url)
 
     def get_volume_stats(self, refresh=False):
         """Get volume stats.
@@ -494,8 +487,10 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
     def _add_target_to_tg(self, tg_name, target_name):
         # Create new target group
         url = 'san/targetgroups/%s' % tg_name
+        members = self.nef.get(url)['members'] or []
+        members.append(target_name)
         data = {
-            'members': [target_name]
+            'members': members
         }
         self.nef.put(url, data)
 
