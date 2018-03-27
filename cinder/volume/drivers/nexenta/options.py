@@ -95,7 +95,7 @@ NEXENTA_ISCSI_OPTS = [
     cfg.StrOpt('nexenta_target_prefix',
                default='iqn.1986-03.com.sun:02:cinder',
                help='IQN prefix for iSCSI targets'),
-    cfg.StrOpt('nexenta_target_group',
+    cfg.StrOpt('nexenta_target_group_prefix',
                default='cinder',
                help='Prefix for iSCSI target groups on SA'),
     cfg.StrOpt('nexenta_volume_group',

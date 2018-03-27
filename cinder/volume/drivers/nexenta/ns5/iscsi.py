@@ -87,7 +87,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
             self.configuration.nexenta_dataset_description)
         self.iscsi_target_portal_port = (
             self.configuration.nexenta_iscsi_target_portal_port)
-        self.tg = self.configuration.nexenta_target_group
+        self.tg_prefix = self.configuration.nexenta_target_group_prefix
 
     @property
     def backend_name(self):
@@ -114,13 +114,6 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
         except exception.NexentaException as e:
             if 'EEXIST' in e.args[0]:
                 LOG.debug('volumeGroup already exists, skipping')
-            else:
-                raise
-        try:
-            self.nef.post('san/targetgroups', {'name': self.tg})
-        except exception.NexentaException as e:
-            if 'EEXIST' in e.args[0]:
-                LOG.debug('Target group %s already exists, skipping' % self.tg)
             else:
                 raise
 
@@ -345,6 +338,11 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
         if self.nef.get(url)['data']:
             url = 'san/iscsi/targets/%s' % target_name
             self.nef.delete(url)
+        tg_name = self.tg_prefix + '-' + volume['name']
+        url = 'san/targetgroups?name=%s' % tg_name
+        if self.nef.get(url)['data']:
+            url = 'san/targetgroups/%s' % tg_name
+            self.nef.delete(url)
 
     def get_volume_stats(self, refresh=False):
         """Get volume stats.
@@ -448,13 +446,14 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
         except exception.NexentaException as e:
             if 'EEXIST' not in e.args[0]:
                 raise
-        self._add_target_to_tg(self.tg, target_name)
+        tg = self.tg_prefix + '-' + volume['name']
+        self._create_target_group(tg, target_name)
 
         # Export the volume
         url = 'san/lunMappings'
         data = {
             "hostGroup": self.host_group,
-            "targetGroup": self.tg,
+            "targetGroup": tg,
             'volume': volume_path
         }
         self.nef.post(url, data)
@@ -484,15 +483,10 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
         }
         return {'provider_location': provider_location}
 
-    def _add_target_to_tg(self, tg_name, target_name):
-        # Create new target group
-        url = 'san/targetgroups/%s' % tg_name
-        members = self.nef.get(url)['members'] or []
-        members.append(target_name)
-        data = {
-            'members': members
-        }
-        self.nef.put(url, data)
+    def _create_target_group(self, tg_name, target_name):
+        url = 'san/targetgroups'
+        data = {'name': tg_name, 'members': [target_name]}
+        self.nef.post(url, data)
 
     def _get_snapshot_volume(self, snapshot):
         ctxt = context.get_admin_context()
