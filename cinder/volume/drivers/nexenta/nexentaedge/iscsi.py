@@ -69,8 +69,6 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
         self.blocksize = self.configuration.nexenta_blocksize
         self.chunksize = self.configuration.nexenta_chunksize
         self.cluster, self.tenant, self.bucket = self.bucket_path.split('/')
-        self.bucket_url = ('clusters/' + self.cluster + '/tenants/' +
-                           self.tenant + '/buckets/' + self.bucket)
         self.iscsi_target_port = (self.configuration.
                                   nexenta_iscsi_target_portal_port)
         self.target_vip = None
@@ -104,16 +102,14 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
                 self.restapi_user, self.restapi_password,
                 self.verify_ssl, auto=auto)
 
-            rsp = self.restapi.get(
-                'service/' + self.iscsi_service + '/iscsi/status')
-            data_keys = rsp['data'][list(rsp['data'].keys())[0]]
-            self.target_name = data_keys.split('\n', 1)[0].split(' ')[2]
+            data = self.restapi.get('service/' + self.iscsi_service)['data']
+            self.target_name = '%s%s' % (
+                data['X-ISCSI-TargetName'], data['X-ISCSI-TargetID'])
 
             target_vip = self.configuration.safe_get(
                 'nexenta_client_address')
-            rsp = self.restapi.get('service/' + self.iscsi_service)
-            if 'X-VIPS' in rsp['data']:
-                vips = json.loads(rsp['data']['X-VIPS'])
+            if 'X-VIPS' in data:
+                vips = json.loads(data['X-VIPS'])
                 vips = [get_ip(host) for host in vips]
                 if target_vip:
                     found = False
@@ -148,41 +144,34 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
                                   'hst': self.restapi_host})
 
     def check_for_setup_error(self):
-        try:
-            self.restapi.get(self.bucket_url + '/objects/')
-        except exception.VolumeBackendAPIException:
-            with excutils.save_and_reraise_exception():
-                LOG.exception('Error verifying LUN container %(bkt)s',
-                              {'bkt': self.bucket_path})
+        url = 'clusters/%s/tenants/%s/buckets' % (self.cluster, self.tenant)
+        if self.bucket not in self.restapi.get(url):
+            raise exception.VolumeBackendAPIException(
+                message=_('Bucket %s does not exist' % self.bucket))
 
     def _get_lun_number(self, volname):
-        try:
-            rsp = self.restapi.put(
-                'service/' + self.iscsi_service + '/iscsi/number',
-                {
-                    'objectPath': self.bucket_path + '/' + volname
-                })
-        except exception.VolumeBackendAPIException:
-            with excutils.save_and_reraise_exception():
-                LOG.exception('Error retrieving LUN %(vol)s number',
-                              {'vol': volname})
-
-        return rsp['data']
-
-    def _get_target_address(self, volname):
-        return self.target_vip
+        rsp = self.restapi.get('service/' + self.iscsi_service + '/iscsi')
+        path = '%s/%s' % (self.bucket_path, volname)
+        for mapping in rsp['data']:
+            if mapping['objectPath'] == path:
+                return mapping['number']
+        return None
 
     def _get_provider_location(self, volume):
+        lun = self._get_lun_number(volume['name'])
+        if not lun:
+            return None
         return '%(host)s:%(port)s,1 %(name)s %(number)s' % {
-            'host': self._get_target_address(volume['name']),
+            'host': self.target_vip,
             'port': self.iscsi_target_port,
             'name': self.target_name,
-            'number': self._get_lun_number(volume['name'])
+            'number': lun
         }
 
     def create_volume(self, volume):
         data = {
-            'objectPath': self.bucket_path + '/' + volume['name'],
+            'objectPath': '%s/%s' % (
+                self.bucket_path, volume['name']),
             'volSizeMB': int(volume['size']) * units.Ki,
             'blockSize': self.blocksize,
             'chunkSize': self.chunksize
@@ -193,23 +182,36 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
             self.restapi.post('service/' + self.iscsi_service + '/iscsi', data)
         except exception.VolumeBackendAPIException:
             with excutils.save_and_reraise_exception():
-                LOG.exception('Error creating volume')
+                LOG.exception(
+                    'Error creating LUN for volume %s' % volume['name'])
+        return {'provider_location': self._get_provider_location(volume)}
 
     def delete_volume(self, volume):
+        data = {
+            'objectPath': '%s/%s' % (
+                self.bucket_path, volume['name'])
+        }
         try:
-            self.restapi.delete('service/' + self.iscsi_service +
-                                '/iscsi', {'objectPath': self.bucket_path +
-                                           '/' + volume['name']})
+            self.restapi.delete(
+                'service/' + self.iscsi_service + '/iscsi', data)
         except exception.VolumeBackendAPIException:
             LOG.info(
-                'Volume was already deleted from appliance, skipping.',
-                resource=volume)
+                'Error deleting LUN for volume %s' % volume['name'])
+
+    def create_export(self, context, volume, connector=None):
+        pass
+
+    def ensure_export(self, context, volume):
+        pass
+
+    def remove_export(self, context, volume):
+        pass
 
     def extend_volume(self, volume, new_size):
         try:
             self.restapi.put('service/' + self.iscsi_service + '/iscsi/resize',
-                             {'objectPath': self.bucket_path +
-                              '/' + volume['name'],
+                             {'objectPath': '%s/%s' % (
+                                 self.bucket_path, volume['name']),
                               'newSizeMB': new_size * units.Ki})
         except exception.VolumeBackendAPIException:
             with excutils.save_and_reraise_exception():
@@ -220,9 +222,10 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
             self.restapi.put(
                 'service/' + self.iscsi_service + '/iscsi/snapshot/clone',
                 {
-                    'objectPath': self.bucket_path + '/' +
-                    snapshot['volume_name'],
-                    'clonePath': self.bucket_path + '/' + volume['name'],
+                    'objectPath': '%s/%s' % (
+                        self.bucket_path, snapshot['volume_name']),
+                    'clonePath': '%s/%s' % (
+                        self.bucket_path, volume['name']),
                     'snapName': snapshot['name']
                 })
         except exception.VolumeBackendAPIException:
@@ -238,8 +241,8 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
             self.restapi.post(
                 'service/' + self.iscsi_service + '/iscsi/snapshot',
                 {
-                    'objectPath': self.bucket_path + '/' +
-                    snapshot['volume_name'],
+                    'objectPath': '%s/%s' % (
+                        self.bucket_path, snapshot['volume_name']),
                     'snapName': snapshot['name']
                 })
         except exception.VolumeBackendAPIException:
@@ -251,8 +254,8 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
             self.restapi.delete(
                 'service/' + self.iscsi_service + '/iscsi/snapshot',
                 {
-                    'objectPath': self.bucket_path + '/' +
-                    snapshot['volume_name'],
+                    'objectPath': '%s/%s' % (
+                        self.bucket_path, snapshot['volume_name']),
                     'snapName': snapshot['name']
                 })
         except exception.VolumeBackendAPIException:
@@ -287,15 +290,6 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
         if volume['size'] > src_vref['size']:
             self.extend_volume(volume, volume['size'])
 
-    def create_export(self, context, volume, connector=None):
-        return {'provider_location': self._get_provider_location(volume)}
-
-    def ensure_export(self, context, volume):
-        pass
-
-    def remove_export(self, context, volume):
-        pass
-
     def local_path(self, volume):
         raise NotImplementedError
 
@@ -307,7 +301,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
 
         location_info = '%(driver)s:%(host)s:%(bucket)s' % {
             'driver': self.__class__.__name__,
-            'host': self._get_target_address(None),
+            'host': self.target_vip,
             'bucket': self.bucket_path
         }
         return {
