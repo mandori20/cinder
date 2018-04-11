@@ -23,10 +23,10 @@ NEXENTA_EDGE_OPTS = [
                     'links to NBDs'),
     cfg.StrOpt('nexenta_rest_user',
                default='admin',
-               help='User name to connect to NexentaEdge'),
+               help='User name to connect to NexentaEdge.'),
     cfg.StrOpt('nexenta_rest_password',
                default='nexenta',
-               help='Password to connect to NexentaEdge',
+               help='Password to connect to NexentaEdge.',
                secret=True),
     cfg.StrOpt('nexenta_lun_container',
                default='',
@@ -40,7 +40,14 @@ NEXENTA_EDGE_OPTS = [
                'address for non-VIP service'),
     cfg.IntOpt('nexenta_chunksize',
                default=32768,
-               help='NexentaEdge iSCSI LUN object chunk size')
+               help='NexentaEdge iSCSI LUN object chunk size'),
+    cfg.IntOpt('nexenta_replication_count',
+               default=3,
+               help='NexentaEdge iSCSI LUN object replication count.'),
+    cfg.BoolOpt('nexenta_encryption',
+                default=False,
+                help='Defines whether NexentaEdge iSCSI LUN object '
+                     'has encryption enabled.')
 ]
 
 NEXENTA_CONNECTION_OPTS = [
