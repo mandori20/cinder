@@ -69,6 +69,8 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
         self.blocksize = self.configuration.nexenta_blocksize
         self.chunksize = self.configuration.nexenta_chunksize
         self.cluster, self.tenant, self.bucket = self.bucket_path.split('/')
+        self.repcount = self.configuration.nexenta_replication_count
+        self.encryption = self.configuration.nexenta_encryption
         self.iscsi_target_port = (self.configuration.
                                   nexenta_iscsi_target_portal_port)
         self.target_vip = None
@@ -149,7 +151,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
             raise exception.VolumeBackendAPIException(
                 message=_('Bucket %s does not exist' % self.bucket))
 
-    def _get_lun_number(self, volname):
+    def _get_lu_number(self, volname):
         rsp = self.restapi.get('service/' + self.iscsi_service + '/iscsi')
         path = '%s/%s' % (self.bucket_path, volname)
         for mapping in rsp['data']:
@@ -158,7 +160,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
         return None
 
     def _get_provider_location(self, volume):
-        lun = self._get_lun_number(volume['name'])
+        lun = self._get_lu_number(volume['name'])
         if not lun:
             return None
         return '%(host)s:%(port)s,1 %(name)s %(number)s' % {
@@ -174,7 +176,10 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
                 self.bucket_path, volume['name']),
             'volSizeMB': int(volume['size']) * units.Ki,
             'blockSize': self.blocksize,
-            'chunkSize': self.chunksize
+            'chunkSize': self.chunksize,
+            'optionsObject': {
+                'ccow-replication-count': self.repcount,
+                'ccow-encryption-enabled': self.encryption}
         }
         if self.ha_vip:
             data['vip'] = self.ha_vip

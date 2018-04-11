@@ -16,6 +16,7 @@
 
 import json
 import mock
+from mock import patch
 
 from cinder import context
 from cinder import exception
@@ -23,9 +24,9 @@ from cinder import test
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.nexenta.nexentaedge import iscsi
 
-NEDGE_URL = 'service/isc/iscsi'
 NEDGE_BUCKET = 'c/t/bk'
 NEDGE_SERVICE = 'isc'
+NEDGE_URL = 'service/%s/iscsi' % NEDGE_SERVICE
 NEDGE_BLOCKSIZE = 4096
 NEDGE_CHUNKSIZE = 16384
 
@@ -51,7 +52,7 @@ MOCK_SNAP = {
     'volume_size': 1
 }
 NEW_VOL_SIZE = 2
-ISCSI_TARGET_NAME = 'iscsi_target_name'
+ISCSI_TARGET_NAME = 'iscsi_target_name:'
 ISCSI_TARGET_STATUS = 'Target 1: ' + ISCSI_TARGET_NAME
 
 
@@ -78,6 +79,8 @@ class TestNexentaEdgeISCSIDriver(test.TestCase):
         self.cfg.nexenta_iscsi_service = NEDGE_SERVICE
         self.cfg.nexenta_blocksize = NEDGE_BLOCKSIZE
         self.cfg.nexenta_chunksize = NEDGE_CHUNKSIZE
+        self.cfg.nexenta_replication_count = 2
+        self.cfg.nexenta_encryption = True
         self.cfg.replication_device = None
 
         mock_exec = mock.Mock()
@@ -90,14 +93,16 @@ class TestNexentaEdgeISCSIDriver(test.TestCase):
         self.mock_api = self.api_patcher.start()
 
         self.mock_api.return_value = {
-            'data': {'value': ISCSI_TARGET_STATUS}
+            'data': {
+                'X-ISCSI-TargetName': ISCSI_TARGET_NAME,
+                'X-ISCSI-TargetID': 1}
         }
         self.driver.do_setup(self.context)
 
         self.addCleanup(self.api_patcher.stop)
 
     def test_check_do_setup(self):
-        self.assertEqual(ISCSI_TARGET_NAME, self.driver.target_name)
+        self.assertEqual('%s1' % ISCSI_TARGET_NAME, self.driver.target_name)
 
     def test_check_do_setup__vip(self):
         first_vip = '/'.join((self.cfg.nexenta_client_address, '32'))
@@ -107,10 +112,11 @@ class TestNexentaEdgeISCSIDriver(test.TestCase):
         ]
 
         def my_side_effect(*args, **kwargs):
-            if args[0] == 'service/isc/iscsi/status':
-                return {'data': {'value': ISCSI_TARGET_STATUS}}
-            else:
-                return {'data': {'X-VIPS': json.dumps(vips)}}
+                return {'data': {
+                    'X-ISCSI-TargetName': ISCSI_TARGET_NAME,
+                    'X-ISCSI-TargetID': 1,
+                    'X-VIPS': json.dumps(vips)}
+                }
 
         self.mock_api.side_effect = my_side_effect
         self.driver.do_setup(self.context)
@@ -124,10 +130,11 @@ class TestNexentaEdgeISCSIDriver(test.TestCase):
         ]
 
         def my_side_effect(*args, **kwargs):
-            if args[0] == 'service/isc/iscsi/status':
-                return {'data': {'value': ISCSI_TARGET_STATUS}}
-            else:
-                return {'data': {'X-VIPS': json.dumps(vips)}}
+                return {'data': {
+                    'X-ISCSI-TargetName': ISCSI_TARGET_NAME,
+                    'X-ISCSI-TargetID': 1,
+                    'X-VIPS': json.dumps(vips)}
+                }
 
         self.mock_api.side_effect = my_side_effect
         self.assertRaises(exception.VolumeBackendAPIException,
@@ -141,10 +148,11 @@ class TestNexentaEdgeISCSIDriver(test.TestCase):
         ]
 
         def my_side_effect(*args, **kwargs):
-            if args[0] == 'service/isc/iscsi/status':
-                return {'data': {'value': ISCSI_TARGET_STATUS}}
-            else:
-                return {'data': {'X-VIPS': json.dumps(vips)}}
+                return {'data': {
+                    'X-ISCSI-TargetName': ISCSI_TARGET_NAME,
+                    'X-ISCSI-TargetID': 1,
+                    'X-VIPS': json.dumps(vips)}
+                }
 
         self.mock_api.side_effect = my_side_effect
         self.driver.do_setup(self.context)
@@ -159,10 +167,11 @@ class TestNexentaEdgeISCSIDriver(test.TestCase):
         ]
 
         def my_side_effect(*args, **kwargs):
-            if args[0] == 'service/isc/iscsi/status':
-                return {'data': {'value': ISCSI_TARGET_STATUS}}
-            else:
-                return {'data': {'X-VIPS': json.dumps(vips)}}
+                return {'data': {
+                    'X-ISCSI-TargetName': ISCSI_TARGET_NAME,
+                    'X-ISCSI-TargetID': 1,
+                    'X-VIPS': json.dumps(vips)}
+                }
 
         self.mock_api.side_effect = my_side_effect
         self.assertRaises(exception.VolumeBackendAPIException,
@@ -173,16 +182,26 @@ class TestNexentaEdgeISCSIDriver(test.TestCase):
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.check_for_setup_error)
 
-    def test_create_volume(self):
+    @patch('cinder.volume.drivers.nexenta.nexentaedge.iscsi.'
+           'NexentaEdgeISCSIDriver._get_lu_number')
+    def test_create_volume(self, lun):
+        lun.return_value = 1
         self.driver.create_volume(MOCK_VOL)
+
         self.mock_api.assert_called_with(NEDGE_URL, {
             'objectPath': NEDGE_BUCKET + '/' + MOCK_VOL['id'],
             'volSizeMB': MOCK_VOL['size'] * 1024,
             'blockSize': NEDGE_BLOCKSIZE,
-            'chunkSize': NEDGE_CHUNKSIZE
+            'chunkSize': NEDGE_CHUNKSIZE,
+            'optionsObject': {
+                'ccow-replication-count': 2,
+                'ccow-encryption-enabled': True}
         })
 
-    def test_create_volume__vip(self):
+    @patch('cinder.volume.drivers.nexenta.nexentaedge.iscsi.'
+           'NexentaEdgeISCSIDriver._get_lu_number')
+    def test_create_volume__vip(self, lun):
+        lun.return_value = 1
         self.driver.ha_vip = self.cfg.nexenta_client_address + '/32'
         self.driver.create_volume(MOCK_VOL)
         self.mock_api.assert_called_with(NEDGE_URL, {
@@ -190,7 +209,10 @@ class TestNexentaEdgeISCSIDriver(test.TestCase):
             'volSizeMB': MOCK_VOL['size'] * 1024,
             'blockSize': NEDGE_BLOCKSIZE,
             'chunkSize': NEDGE_CHUNKSIZE,
-            'vip': self.cfg.nexenta_client_address + '/32'
+            'vip': self.cfg.nexenta_client_address + '/32',
+            'optionsObject': {
+                'ccow-replication-count': 2,
+                'ccow-encryption-enabled': True}
         })
 
     def test_create_volume_fail(self):
