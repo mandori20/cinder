@@ -69,6 +69,8 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
         self.blocksize = self.configuration.nexenta_blocksize
         self.chunksize = self.configuration.nexenta_chunksize
         self.cluster, self.tenant, self.bucket = self.bucket_path.split('/')
+        self.repcount = self.configuration.nexenta_replication_count
+        self.encryption = self.configuration.nexenta_encryption
         self.iscsi_target_port = (self.configuration.
                                   nexenta_iscsi_target_portal_port)
         self.target_vip = None
@@ -174,7 +176,10 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
                 self.bucket_path, volume['name']),
             'volSizeMB': int(volume['size']) * units.Ki,
             'blockSize': self.blocksize,
-            'chunkSize': self.chunksize
+            'chunkSize': self.chunksize,
+            'optionsObject': {
+                'ccow-replication-count': self.repcount,
+                'ccow-encryption-enabled': self.encryption}
         }
         if self.ha_vip:
             data['vip'] = self.ha_vip
