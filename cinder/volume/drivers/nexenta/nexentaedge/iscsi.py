@@ -151,7 +151,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
             raise exception.VolumeBackendAPIException(
                 message=_('Bucket %s does not exist' % self.bucket))
 
-    def _get_lun_number(self, volname):
+    def _get_lu_number(self, volname):
         rsp = self.restapi.get('service/' + self.iscsi_service + '/iscsi')
         path = '%s/%s' % (self.bucket_path, volname)
         for mapping in rsp['data']:
@@ -160,7 +160,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
         return None
 
     def _get_provider_location(self, volume):
-        lun = self._get_lun_number(volume['name'])
+        lun = self._get_lu_number(volume['name'])
         if not lun:
             return None
         return '%(host)s:%(port)s,1 %(name)s %(number)s' % {
