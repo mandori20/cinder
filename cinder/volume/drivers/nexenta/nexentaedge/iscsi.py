@@ -39,10 +39,11 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
         1.0.0 - Initial driver version.
         1.0.1 - Moved opts to options.py.
         1.0.2 - Added HA support.
-        1.0.3 - Driver re-introduced in OpenStack.
+        1.0.3 - Added encryption and replication count support.
+        1.0.4 - Driver re-introduced in OpenStack.
     """
 
-    VERSION = '1.0.3'
+    VERSION = '1.0.4'
 
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "Nexenta_Edge_CI"
