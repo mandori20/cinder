@@ -182,7 +182,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
                 'ccow-replication-count': self.repcount}
         }
         if self.encryption:
-            data['ccow-encryption-enabled'] = True
+            data['optionsObject']['ccow-encryption-enabled'] = True
         if self.ha_vip:
             data['vip'] = self.ha_vip
         try:
