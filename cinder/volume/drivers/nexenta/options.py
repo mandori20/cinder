@@ -15,8 +15,6 @@
 
 from oslo_config import cfg
 
-from cinder.volume import configuration as conf
-
 NEXENTA_EDGE_OPTS = [
     cfg.StrOpt('nexenta_nbd_symlinks_dir',
                default='/dev/disk/by-path',
@@ -178,9 +176,9 @@ NEXENTA_RRMGR_OPTS = [
 ]
 
 CONF = cfg.CONF
-CONF.register_opts(NEXENTA_CONNECTION_OPTS, group=conf.SHARED_CONF_GROUP)
-CONF.register_opts(NEXENTA_ISCSI_OPTS, group=conf.SHARED_CONF_GROUP)
-CONF.register_opts(NEXENTA_DATASET_OPTS, group=conf.SHARED_CONF_GROUP)
-CONF.register_opts(NEXENTA_NFS_OPTS, group=conf.SHARED_CONF_GROUP)
-CONF.register_opts(NEXENTA_RRMGR_OPTS, group=conf.SHARED_CONF_GROUP)
-CONF.register_opts(NEXENTA_EDGE_OPTS, group=conf.SHARED_CONF_GROUP)
+CONF.register_opts(NEXENTA_CONNECTION_OPTS)
+CONF.register_opts(NEXENTA_ISCSI_OPTS)
+CONF.register_opts(NEXENTA_DATASET_OPTS)
+CONF.register_opts(NEXENTA_NFS_OPTS)
+CONF.register_opts(NEXENTA_RRMGR_OPTS)
+CONF.register_opts(NEXENTA_EDGE_OPTS)
