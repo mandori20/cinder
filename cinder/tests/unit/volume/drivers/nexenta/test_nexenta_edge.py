@@ -120,7 +120,7 @@ class TestNexentaEdgeISCSIDriver(test.TestCase):
 
         self.mock_api.side_effect = my_side_effect
         self.driver.do_setup(self.context)
-        self.assertEqual(self.driver.ha_vip, first_vip)
+        self.assertEqual(self.driver.ha_vip, first_vip.split('/')[0])
 
     def test_check_do_setup__vip_not_in_xvips(self):
         first_vip = '1.2.3.4/32'
@@ -137,44 +137,7 @@ class TestNexentaEdgeISCSIDriver(test.TestCase):
                 }
 
         self.mock_api.side_effect = my_side_effect
-        self.assertRaises(exception.VolumeBackendAPIException,
-                          self.driver.do_setup, self.context)
-
-    def test_check_do_setup__vip_no_client_address(self):
-        self.cfg.nexenta_client_address = None
-        first_vip = '1.2.3.4/32'
-        vips = [
-            [{'ip': first_vip}]
-        ]
-
-        def my_side_effect(*args, **kwargs):
-                return {'data': {
-                    'X-ISCSI-TargetName': ISCSI_TARGET_NAME,
-                    'X-ISCSI-TargetID': 1,
-                    'X-VIPS': json.dumps(vips)}
-                }
-
-        self.mock_api.side_effect = my_side_effect
-        self.driver.do_setup(self.context)
-        self.assertEqual(self.driver.ha_vip, first_vip)
-
-    def test_check_do_setup__vip_no_client_address_2_xvips(self):
-        self.cfg.nexenta_client_address = None
-        first_vip = '1.2.3.4/32'
-        vips = [
-            [{'ip': first_vip}],
-            [{'ip': '0.0.0.1/32'}]
-        ]
-
-        def my_side_effect(*args, **kwargs):
-                return {'data': {
-                    'X-ISCSI-TargetName': ISCSI_TARGET_NAME,
-                    'X-ISCSI-TargetID': 1,
-                    'X-VIPS': json.dumps(vips)}
-                }
-
-        self.mock_api.side_effect = my_side_effect
-        self.assertRaises(exception.VolumeBackendAPIException,
+        self.assertRaises(exception.NexentaException,
                           self.driver.do_setup, self.context)
 
     def check_for_setup_error(self):

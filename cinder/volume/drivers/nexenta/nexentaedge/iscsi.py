@@ -13,8 +13,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import json
-
 from oslo_log import log as logging
 from oslo_utils import excutils
 from oslo_utils import units
@@ -127,6 +125,8 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
                     raise exception.NexentaException(
                         'Configured client IP address does not match any VIP'
                         ' provided by iSCSI service %s' % self.iscsi_service)
+                else:
+                    self.ha_vip = self.target_vip
         except exception.VolumeBackendAPIException:
             with excutils.save_and_reraise_exception():
                 LOG.exception('Error verifying iSCSI service %(serv)s on '
