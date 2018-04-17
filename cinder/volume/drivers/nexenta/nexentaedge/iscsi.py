@@ -58,15 +58,15 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
             self.configuration.append_config_values(
                 options.NEXENTA_EDGE_OPTS)
         if self.configuration.nexenta_rest_address:
-            LOG.warning('nexenta_rest_address parameter is deprecated and will'
-                        'be removed in upcoming releases, use san_rest_ip '
-                        'instead')
+            LOG.warning('nexenta_rest_address parameter is deprecated and'
+                        ' will be removed in upcoming releases, use '
+                        'san_ip instead')
             self.restapi_host = self.configuration.nexenta_rest_address
         else:
-            self.restapi_host = self.configuration.san_rest_ip
+            self.restapi_host = self.configuration.san_ip
 
         if self.configuration.nexenta_rest_port:
-            LOG.warning('nexenta_rest_port parameter is deprecated and will'
+            LOG.warning('nexenta_rest_port parameter is deprecated and will '
                         'be removed in upcoming releases, use san_rest_port '
                         'instead')
             self.restapi_port = self.configuration.nexenta_rest_port
@@ -76,10 +76,10 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
         if self.configuration.nexenta_client_address:
             LOG.warning('nexenta_client_address parameter is deprecated and '
                         'will be removed in upcoming releases, use '
-                        'san_ip instead')
+                        'target_ip_address instead')
             self.target_vip = self.configuration.nexenta_client_address
         else:
-            self.target_vip = self.configuration.san_ip
+            self.target_vip = self.configuration.target_ip_address
 
         self.verify_ssl = self.configuration.driver_ssl_cert_verify
         self.restapi_protocol = self.configuration.nexenta_rest_protocol

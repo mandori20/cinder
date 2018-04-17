@@ -36,6 +36,7 @@ NEXENTA_EDGE_OPTS = [
                default='',
                help='NexentaEdge iSCSI service name'),
     cfg.StrOpt('nexenta_client_address',
+               deprecated_for_removal=True,
                default='',
                help='NexentaEdge iSCSI Gateway client '
                'address for non-VIP service'),
@@ -53,12 +54,14 @@ NEXENTA_EDGE_OPTS = [
 
 NEXENTA_CONNECTION_OPTS = [
     cfg.StrOpt('nexenta_rest_address',
+               deprecated_for_removal=True,
                default='',
                help='IP address of NexentaEdge management REST API endpoint'),
     cfg.StrOpt('nexenta_host',
                default='',
                help='IP address of Nexenta SA'),
     cfg.IntOpt('nexenta_rest_port',
+               deprecated_for_removal=True,
                default=0,
                help='HTTP(S) port to connect to Nexenta REST API server. '
                     'If it is equal zero, 8443 for HTTPS and 8080 for HTTP '
