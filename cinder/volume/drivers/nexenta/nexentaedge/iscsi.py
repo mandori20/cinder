@@ -138,7 +138,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
         url = 'clusters/%s/tenants/%s/buckets' % (self.cluster, self.tenant)
         if self.bucket not in self.restapi.get(url):
             raise exception.VolumeBackendAPIException(
-                message=_('Bucket %s does not exist' % self.bucket))
+                message=_('Bucket %s does not exist') % self.bucket)
 
     def _get_lu_number(self, volname):
         rsp = self.restapi.get('service/' + self.iscsi_service + '/iscsi')
@@ -178,7 +178,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
         except exception.VolumeBackendAPIException:
             with excutils.save_and_reraise_exception():
                 LOG.exception(
-                    'Error creating LUN for volume %s' % volume['name'])
+                    'Error creating LUN for volume %s', volume['name'])
         return {'provider_location': self._get_provider_location(volume)}
 
     def delete_volume(self, volume):
@@ -191,7 +191,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
                 'service/' + self.iscsi_service + '/iscsi', data)
         except exception.VolumeBackendAPIException:
             LOG.info(
-                'Error deleting LUN for volume %s' % volume['name'])
+                'Error deleting LUN for volume %s', volume['name'])
 
     def create_export(self, context, volume, connector=None):
         pass
