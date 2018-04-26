@@ -202,6 +202,24 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
     def remove_export(self, context, volume):
         pass
 
+    def terminate_connection(self, volume, connector, **kwargs):
+        pass
+
+    def initialize_connection(self, volume, connector):
+        return {
+            'driver_volume_type': 'iscsi',
+            'data': {
+                'target_discovered': False,
+                'encrypted': False,
+                'qos_specs': None,
+                'target_iqn': self.target_iqn,
+                'target_portal': self.target_vip,
+                'volume_id': volume['id'],
+                'target_lun': self._get_lu_number(volume['name']),
+                'access_mode': 'rw',
+            }
+        }
+
     def extend_volume(self, volume, new_size):
         try:
             self.restapi.put('service/' + self.iscsi_service + '/iscsi/resize',
