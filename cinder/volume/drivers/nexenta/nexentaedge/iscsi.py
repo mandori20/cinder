@@ -38,10 +38,11 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
         1.0.1 - Moved opts to options.py.
         1.0.2 - Added HA support.
         1.0.3 - Added encryption and replication count support.
-        1.0.4 - Driver re-introduced in OpenStack.
+        1.0.4 - Added initialize_connection.
+        1.0.5 - Driver re-introduced in OpenStack.
     """
 
-    VERSION = '1.0.4'
+    VERSION = '1.0.5'
 
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "Nexenta_Edge_CI"
@@ -202,9 +203,6 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
     def remove_export(self, context, volume):
         pass
 
-    def terminate_connection(self, volume, connector, **kwargs):
-        pass
-
     def initialize_connection(self, volume, connector):
         return {
             'driver_volume_type': 'iscsi',
@@ -212,8 +210,9 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
                 'target_discovered': False,
                 'encrypted': False,
                 'qos_specs': None,
-                'target_iqn': self.target_iqn,
-                'target_portal': self.target_vip,
+                'target_iqn': self.target_name,
+                'target_portal': '%s:%s' % (
+                    self.target_vip, self.iscsi_target_port),
                 'volume_id': volume['id'],
                 'target_lun': self._get_lu_number(volume['name']),
                 'access_mode': 'rw',
