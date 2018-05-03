@@ -59,33 +59,32 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
             self.configuration.append_config_values(
                 options.NEXENTA_EDGE_OPTS)
         if self.configuration.nexenta_rest_address:
-            LOG.warning('nexenta_rest_address parameter is deprecated and'
-                        ' will be removed in upcoming releases, use '
-                        'san_ip instead')
             self.restapi_host = self.configuration.nexenta_rest_address
         else:
             self.restapi_host = self.configuration.san_ip
 
         if self.configuration.nexenta_rest_port:
-            LOG.warning('nexenta_rest_port parameter is deprecated and will '
-                        'be removed in upcoming releases, use san_rest_port '
-                        'instead')
             self.restapi_port = self.configuration.nexenta_rest_port
         else:
-            self.restapi_port = self.configuration.san_rest_port
+            self.restapi_port = self.configuration.san_api_port
 
         if self.configuration.nexenta_client_address:
-            LOG.warning('nexenta_client_address parameter is deprecated and '
-                        'will be removed in upcoming releases, use '
-                        'target_ip_address instead')
             self.target_vip = self.configuration.nexenta_client_address
         else:
             self.target_vip = self.configuration.target_ip_address
+        if self.configuration.nexenta_rest_password:
+            self.restapi_password = (
+                self.configuration.nexenta_rest_password)
+        else:
+            self.restapi_password = (
+                self.configuration.san_password)
+        if self.configuration.nexenta_rest_user:
+            self.restapi_user = self.configuration.nexenta_rest_user
+        else:
+            self.restapi_user = self.configuration.san_login
 
         self.verify_ssl = self.configuration.driver_ssl_cert_verify
         self.restapi_protocol = self.configuration.nexenta_rest_protocol
-        self.restapi_user = self.configuration.nexenta_rest_user
-        self.restapi_password = self.configuration.nexenta_rest_password
         self.iscsi_service = self.configuration.nexenta_iscsi_service
         self.bucket_path = self.configuration.nexenta_lun_container
         self.blocksize = self.configuration.nexenta_blocksize

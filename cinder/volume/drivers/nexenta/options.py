@@ -42,6 +42,8 @@ NEXENTA_EDGE_OPTS = [
                help='NexentaEdge iSCSI service name'),
     cfg.StrOpt('nexenta_client_address',
                deprecated_for_removal=True,
+               deprecated_reason='iSCSI target address should now be set using'
+                                 ' the common param target_ip_address.',
                default='',
                help='NexentaEdge iSCSI Gateway client '
                'address for non-VIP service'),
@@ -60,6 +62,9 @@ NEXENTA_EDGE_OPTS = [
 NEXENTA_CONNECTION_OPTS = [
     cfg.StrOpt('nexenta_rest_address',
                deprecated_for_removal=True,
+               deprecated_reason='Rest address should now be set using '
+                                 'the common param depending on driver type, '
+                                 'san_ip or nas_host',
                default='',
                help='IP address of NexentaEdge management REST API endpoint'),
     cfg.StrOpt('nexenta_host',
@@ -67,6 +72,8 @@ NEXENTA_CONNECTION_OPTS = [
                help='IP address of Nexenta SA'),
     cfg.IntOpt('nexenta_rest_port',
                deprecated_for_removal=True,
+               deprecated_reason='Rest address should now be set using '
+                                 'the common param san_api_port.',
                default=0,
                help='HTTP(S) port to connect to Nexenta REST API server. '
                     'If it is equal zero, 8443 for HTTPS and 8080 for HTTP '
@@ -82,9 +89,17 @@ NEXENTA_CONNECTION_OPTS = [
                 default=False,
                 help='Postponed write to backing store or not'),
     cfg.StrOpt('nexenta_user',
+               deprecated_for_removal=True,
+               deprecated_reason='Common user parameters should be used '
+                                 'depending on the driver type: '
+                                 'san_login or nas_login',
                default='admin',
                help='User name to connect to Nexenta SA'),
     cfg.StrOpt('nexenta_password',
+               deprecated_for_removal=True,
+               deprecated_reason='Common password parameters should be used '
+                                 'depending on the driver type: '
+                                 'san_password or nas_password',
                default='nexenta',
                help='Password to connect to Nexenta SA',
                secret=True),
