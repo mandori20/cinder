@@ -82,7 +82,6 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
             self.restapi_user = self.configuration.nexenta_rest_user
         else:
             self.restapi_user = self.configuration.san_login
-
         self.verify_ssl = self.configuration.driver_ssl_cert_verify
         self.restapi_protocol = self.configuration.nexenta_rest_protocol
         self.iscsi_service = self.configuration.nexenta_iscsi_service
@@ -167,7 +166,8 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
             'blockSize': self.blocksize,
             'chunkSize': self.chunksize,
             'optionsObject': {
-                'ccow-replication-count': self.repcount}
+                'ccow-replication-count': self.repcount,
+                'ccow-iops-rate-lim': self.configuration.nexenta_iops_limit}
         }
         if self.encryption:
             data['optionsObject']['ccow-encryption-enabled'] = True

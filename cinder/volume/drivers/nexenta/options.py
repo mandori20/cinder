@@ -47,6 +47,9 @@ NEXENTA_EDGE_OPTS = [
                default='',
                help='NexentaEdge iSCSI Gateway client '
                'address for non-VIP service'),
+    cfg.IntOpt('nexenta_iops_limit',
+               default=0,
+               help='NexentaEdge iSCSI LUN object IOPS limit'),
     cfg.IntOpt('nexenta_chunksize',
                default=32768,
                help='NexentaEdge iSCSI LUN object chunk size'),
