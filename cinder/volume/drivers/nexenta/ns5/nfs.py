@@ -381,13 +381,13 @@ class NexentaNfsDriver(nfs.NfsDriver):
             else:
                 raise
         finally:
-            self._delete(local_path.strip('/volume'))
+            self._delete(local_path.rstrip('/volume'))
         if origin and 'clone' in origin:
             url = 'storage/snapshots/%s' % urllib.parse.quote_plus(origin)
             self.nef.delete(url)
 
     def _delete(self, path):
-        self._execute('rmdir', path, run_as_root=True)
+        self._execute('rm', '-rf', path)
 
     def extend_volume(self, volume, new_size):
         """Extend an existing volume.
