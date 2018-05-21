@@ -381,7 +381,7 @@ class NexentaNfsDriver(nfs.NfsDriver):
             else:
                 raise
         finally:
-            self._delete(local_path)
+            self._delete(local_path.strip('/volume'))
         if origin and 'clone' in origin:
             url = 'storage/snapshots/%s' % urllib.parse.quote_plus(origin)
             self.nef.delete(url)
