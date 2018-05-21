@@ -200,7 +200,8 @@ class NexentaNfsDriver(nfs.NfsDriver):
 
         for attempt in range(num_attempts):
             try:
-                self._execute('umount', mount_path, run_as_root=True)
+                self._execute(
+                    'umount', mount_path, run_as_root=self._execute_as_root)
                 LOG.debug('NFS share %(share)s was successfully unmounted '
                           'from %(path)s.', {
                               'share': nfs_share,
@@ -340,6 +341,10 @@ class NexentaNfsDriver(nfs.NfsDriver):
         pool, fs = self._get_share_datasets(self.share)
         self._ensure_share_unmounted('%s:/%s/%s' % (
             self.nas_host, self.share, volume['name']))
+        url = 'storage/filesystems?path=%s' % '%2F'.join(
+            [pool, fs, volume['name']])
+        if not self.nef.get(url).get('data'):
+            return
         url = 'storage/filesystems/%s' % '%2F'.join(
             [pool, fs, volume['name']])
 
@@ -355,25 +360,33 @@ class NexentaNfsDriver(nfs.NfsDriver):
                     [pool, fs, volume['name']])
                 snap_map = {}
                 for snap in self.nef.get(url)['data']:
-                    url = 'storage/snapshots/%s' % (
+                    url = 'storage/snapshots?path=%s' % (
                         urllib.parse.quote_plus(snap['path']))
-                    data = self.nef.get(url)
-                    if data['clones']:
+                    data = self.nef.get(url).get('data')[0]
+                    if data and data.get('clones'):
                         snap_map[data['creationTxg']] = snap['path']
-                snap = snap_map[max(snap_map)]
-                url = 'storage/snapshots/%s' % urllib.parse.quote_plus(snap)
-                clone = self.nef.get(url)['clones'][0]
-                url = 'storage/filesystems/%s/promote' % (
-                    urllib.parse.quote_plus(clone))
-                self.nef.post(url)
-                url = 'storage/filesystems/%s?force=true&snapshots=true' % '%2F'.join(
-                    [pool, fs, volume['name']])
-                self.nef.delete(url)
+                if snap_map:
+                    snap = snap_map[max(snap_map)]
+                    url = 'storage/snapshots/%s' % urllib.parse.quote_plus(
+                        snap)
+                    clone = self.nef.get(url)['clones'][0]
+                    url = 'storage/filesystems/%s/promote' % (
+                        urllib.parse.quote_plus(clone))
+                    self.nef.post(url)
+                    path = '%2F'.join([pool, fs, volume['name']])
+                    params = 'force=true&snapshots=true'
+                    url = 'storage/filesystems/%s?%s' % (path, params)
+                    self.nef.delete(url)
             else:
                 raise
+        finally:
+            self._delete(self.local_path(volume))
         if origin and 'clone' in origin:
             url = 'storage/snapshots/%s' % urllib.parse.quote_plus(origin)
             self.nef.delete(url)
+
+    def _delete(self, path):
+        self._execute('rmdir', path, run_as_root=True)
 
     def extend_volume(self, volume, new_size):
         """Extend an existing volume.
@@ -388,7 +401,7 @@ class NexentaNfsDriver(nfs.NfsDriver):
         if self.sparsed_volumes:
             self._execute('truncate', '-s', '%sG' % new_size,
                           self.local_path(volume),
-                          run_as_root=self._execute_as_root)
+                          run_as_root=True)
         else:
             block_count = ((new_size - volume['size']) * units.Gi //
                            (BLOCK_SIZE_MB * units.Mi))
@@ -407,6 +420,7 @@ class NexentaNfsDriver(nfs.NfsDriver):
         :param snapshot: snapshot reference
         """
         volume = self._get_snapshot_volume(snapshot)
+        LOG.info('Create snapshot for volume %s.' % volume['name'])
         pool, fs = self._get_share_datasets(self.share)
         url = 'storage/snapshots'
 
@@ -452,10 +466,9 @@ class NexentaNfsDriver(nfs.NfsDriver):
         :param snapshot: reference of source snapshot
         """
         snapshot_vol = self._get_snapshot_volume(snapshot)
-        volume['provider_location'] = snapshot_vol['provider_location']
-
+        volume['provider_location'] = '%s:/%s/%s' % (
+            self.nas_host, self.share, volume['name'])
         pool, fs = self._get_share_datasets(self.share)
-        dataset_path = '%s/%s' % (pool, fs)
         fs_path = '%2F'.join([pool, fs, snapshot_vol['name']])
         url = ('storage/snapshots/%s/clone') % (
             '@'.join([fs_path, snapshot['name']]))
@@ -463,8 +476,14 @@ class NexentaNfsDriver(nfs.NfsDriver):
         data = {'targetPath': path}
         self.nef.post(url, data)
 
+        self.nef.post(
+            'storage/filesystems/%s/unmount' % urllib.parse.quote_plus(path))
+        self.nef.post(
+            'storage/filesystems/%s/mount' % urllib.parse.quote_plus(path))
+        dataset_path = '%s/%s' % (pool, fs)
         try:
             self._share_folder(fs, volume['name'])
+
         except exception.NexentaException as exc:
             try:
                 url = ('storage/filesystems/') % (
@@ -508,13 +527,19 @@ class NexentaNfsDriver(nfs.NfsDriver):
                             '%(volume_name)s@%(name)s', snapshot)
             raise exc
 
+    def _get_share_path(self, nas_host, share, volume_name):
+        url = 'storage/filesystems/%s' % urllib.parse.quote_plus(
+            '%s/%s' % (share, volume_name))
+        return '%s:%s' % (nas_host, self.nef.get(url)['mountPoint'])
+
     def local_path(self, volume):
         """Get volume path (mounted locally fs path) for given volume.
 
         :param volume: volume reference
         """
-        nfs_share = volume['provider_location']
-        return os.path.join(self._get_mount_point_for_share(nfs_share),
+        share_path = self._get_share_path(
+            self.nas_host, self.share, volume['name'])
+        return os.path.join(self._get_mount_point_for_share(share_path),
                             'volume')
 
     def _get_mount_point_for_share(self, nfs_share):
