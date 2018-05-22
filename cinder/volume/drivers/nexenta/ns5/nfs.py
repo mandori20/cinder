@@ -180,6 +180,9 @@ class NexentaNfsDriver(nfs.NfsDriver):
                             {'vol': pool, 'folder': '/'.join(
                                 [fs, volume['name']])})
             raise exc
+        finally:
+            self._ensure_share_unmounted('%s:/%s/%s' % (
+                self.nas_host, self.share, volume['name']))
 
     def _ensure_share_unmounted(self, nfs_share, mount_path=None):
         """Ensure that NFS share is unmounted on the host.
@@ -322,8 +325,14 @@ class NexentaNfsDriver(nfs.NfsDriver):
 
         return True, {'provider_location': provider_location}
 
+    def terminate_connection(self, volume, connector, **kwargs):
+        self._ensure_share_unmounted('%s:/%s/%s' % (
+            self.nas_host, self.share, volume['name']))
+
     def initialize_connection(self, volume, connector):
         LOG.debug('Initialize volume connection for %s', volume['name'])
+        self._ensure_share_mounted('%s:/%s/%s' % (
+            self.nas_host, self.share, volume['name']))
         url = 'hpr/activate'
         data = {'datasetName': volume['provider_location'].split(':/')[1]}
         self.nef.post(url, data)
@@ -340,8 +349,6 @@ class NexentaNfsDriver(nfs.NfsDriver):
         :param volume: volume reference
         """
         pool, fs = self._get_share_datasets(self.share)
-        self._ensure_share_unmounted('%s:/%s/%s' % (
-            self.nas_host, self.share, volume['name']))
         url = 'storage/filesystems?path=%s' % '%2F'.join(
             [pool, fs, volume['name']])
         if not self.nef.get(url).get('data'):
