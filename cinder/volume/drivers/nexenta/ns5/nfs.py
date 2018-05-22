@@ -131,6 +131,8 @@ class NexentaNfsDriver(nfs.NfsDriver):
             self.nas_host, self.share, volume['name']))
         super(NexentaNfsDriver, self).copy_volume_to_image(
             context, volume, image_service, image_meta)
+        self._ensure_share_unmounted('%s:/%s/%s' % (
+            self.nas_host, self.share, volume['name']))
 
     def _do_create_volume(self, volume):
         pool, fs = self._get_share_datasets(self.share)
