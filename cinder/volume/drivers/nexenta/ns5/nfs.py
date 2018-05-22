@@ -422,6 +422,8 @@ class NexentaNfsDriver(nfs.NfsDriver):
                 'bs=%dM' % BLOCK_SIZE_MB,
                 'count=%d' % block_count,
                 run_as_root=True)
+        self._ensure_share_unmounted('%s:/%s/%s' % (
+            self.nas_host, self.share, volume['name']))
 
     def create_snapshot(self, snapshot):
         """Creates a snapshot.
@@ -461,7 +463,7 @@ class NexentaNfsDriver(nfs.NfsDriver):
     def revert_to_snapshot(self, context, volume, snapshot):
         """Revert volume to snapshot."""
         pool, fs = self._get_share_datasets(self.share)
-        fs_path = '%2F'.join([pool, fs, volume['name']])
+        fs_path = '/'.join([pool, fs, volume['name']])
         LOG.debug('Reverting volume %s to snapshot %s.' % (
             fs_path, snapshot['name']))
         url = 'storage/filesystems/%s/rollback' % urllib.parse.quote_plus(
