@@ -1,4 +1,4 @@
-# Copyright 2015 Nexenta Systems, Inc.
+# Copyright 2018 Nexenta Systems, Inc.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -169,6 +169,8 @@ class RESTCaller(object):
                 if content:
                     for service in content['data']:
                         if service['serviceName'] == self.__proxy.pool:
+                            if len(service['vips']) == 0:
+                                continue
                             for mapping in service['vips'][0]['nodeMapping']:
                                 if (mapping['node'] == node_name and
                                         mapping['status'] == 'up'):
