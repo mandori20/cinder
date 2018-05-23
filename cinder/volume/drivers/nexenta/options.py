@@ -15,6 +15,10 @@
 
 from oslo_config import cfg
 
+POLL_RETRIES = 5
+DEFAULT_ISCSI_PORT = 3260
+DEFAULT_HOST_GROUP = 'all'
+DEFAULT_TARGET_GROUP = 'all'
 
 NEXENTA_EDGE_OPTS = [
     cfg.StrOpt('nexenta_nbd_symlinks_dir',
@@ -101,6 +105,9 @@ NEXENTA_ISCSI_OPTS = [
     cfg.StrOpt('nexenta_target_group_prefix',
                default='cinder',
                help='Prefix for iSCSI target groups on SA'),
+    cfg.StrOpt('nexenta_host_group_prefix',
+               default='cinder',
+               help='Prefix for iSCSI host groups on SA'),
     cfg.StrOpt('nexenta_volume_group',
                default='iscsi',
                help='Volume group for NexentaStor5 iSCSI'),
@@ -122,6 +129,9 @@ NEXENTA_NFS_OPTS = [
                      'sparsed files that take no space. If disabled '
                      '(False), volume is created as a regular file, '
                      'which takes a long time.'),
+    cfg.BoolOpt('nexenta_qcow2_volumes',
+                default=False,
+                help='Create volumes as QCOW2 files rather than raw files'),
     cfg.BoolOpt('nexenta_nms_cache_volroot',
                 default=True,
                 help=('If set True cache NexentaStor appliance volroot option '
