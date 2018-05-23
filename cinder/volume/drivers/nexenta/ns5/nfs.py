@@ -50,7 +50,9 @@ class NexentaNfsDriver(nfs.NfsDriver):
         1.3.0 - Failover support.
         1.4.0 - Migrate volume support and new NEF API calls.
         1.4.1 - Revert to snapshot support.
-        1.4.2 - Get mount point from API to support old style.
+        1.4.2 - Get mountPoint from API to support old style mount points.
+                Mount and umount shares on each operation to avoid mass
+                mounts on controller. Clean up mount folders on delete.
     """
 
     driver_prefix = 'nexenta'
