@@ -142,7 +142,7 @@ class NexentaNfsDriver(nfs.NfsDriver):
     def _do_create_volume(self, volume):
         pool, fs = self._get_share_datasets(self.share)
         filesystem = '%s/%s/%s' % (pool, fs, volume['name'])
-        LOG.debug('Creating filesystem on NexentaStor %s', filesystem)
+        LOG.debug("Creating filesystem on NexentaStor %s", filesystem)
         url = 'storage/filesystems'
         data = {
             'path': '/'.join([pool, fs, volume['name']]),
@@ -543,12 +543,16 @@ class NexentaNfsDriver(nfs.NfsDriver):
             return pl
         except exception.NexentaException as exc:
             LOG.error('Volume creation failed, deleting created snapshot '
-                      '%(volume_name)s@%(name)s', snapshot)
+                      '%(volume_name)s@%(name)s', {
+                          'volume_name': snapshot['volume_name'],
+                          'name': snapshot['name']})
             try:
                 self.delete_snapshot(snapshot)
             except (exception.NexentaException, exception.SnapshotIsBusy):
                 LOG.warning('Failed to delete zfs snapshot '
-                            '%(volume_name)s@%(name)s', snapshot)
+                            '%(volume_name)s@%(name)s', {
+                                'volume_name': snapshot['volume_name'],
+                                'name': snapshot['name']})
             raise exc
 
     def _get_share_path(self, nas_host, share, volume_name):
