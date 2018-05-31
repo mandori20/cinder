@@ -105,7 +105,7 @@ class NexentaNfsDriver(nfs.NfsDriver):
         pool_name, fs = self._get_share_datasets(self.share)
         self.nef = jsonrpc.NexentaJSONProxy(
             host, self.nef_port, self.nef_user,
-            self.nef_password, self.use_https, self.verify_ssl)
+            self.nef_password, self.use_https, pool_name, self.verify_ssl)
 
     def check_for_setup_error(self):
         """Verify that the volume for our folder exists.
@@ -131,6 +131,14 @@ class NexentaNfsDriver(nfs.NfsDriver):
         self._do_create_volume(volume)
         return {'provider_location': volume['provider_location']}
 
+    def copy_image_to_volume(self, context, volume, image_service, image_meta):
+        self._ensure_share_mounted('%s:/%s/%s' % (
+            self.nas_host, self.share, volume['name']))
+        super(NexentaNfsDriver, self).copy_image_to_volume(
+            context, volume, image_service, image_meta)
+        self._ensure_share_unmounted('%s:/%s/%s' % (
+            self.nas_host, self.share, volume['name']))
+
     def copy_volume_to_image(self, context, volume, image_service, image_meta):
         self._ensure_share_mounted('%s:/%s/%s' % (
             self.nas_host, self.share, volume['name']))
@@ -142,7 +150,7 @@ class NexentaNfsDriver(nfs.NfsDriver):
     def _do_create_volume(self, volume):
         pool, fs = self._get_share_datasets(self.share)
         filesystem = '%s/%s/%s' % (pool, fs, volume['name'])
-        LOG.debug("Creating filesystem on NexentaStor %s", filesystem)
+        LOG.debug('Creating filesystem on NexentaStor %s', filesystem)
         url = 'storage/filesystems'
         data = {
             'path': '/'.join([pool, fs, volume['name']]),
