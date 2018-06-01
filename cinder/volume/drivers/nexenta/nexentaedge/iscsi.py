@@ -38,10 +38,11 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
         1.0.1 - Moved opts to options.py.
         1.0.2 - Added HA support.
         1.0.3 - Added encryption and replication count support.
-        1.0.4 - Driver re-introduced in OpenStack.
+        1.0.4 - Added initialize_connection.
+        1.0.5 - Driver re-introduced in OpenStack.
     """
 
-    VERSION = '1.0.4'
+    VERSION = '1.0.5'
 
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "Nexenta_Edge_CI"
@@ -58,33 +59,31 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
             self.configuration.append_config_values(
                 options.NEXENTA_EDGE_OPTS)
         if self.configuration.nexenta_rest_address:
-            LOG.warning('nexenta_rest_address parameter is deprecated and'
-                        ' will be removed in upcoming releases, use '
-                        'san_ip instead')
             self.restapi_host = self.configuration.nexenta_rest_address
         else:
             self.restapi_host = self.configuration.san_ip
 
         if self.configuration.nexenta_rest_port:
-            LOG.warning('nexenta_rest_port parameter is deprecated and will '
-                        'be removed in upcoming releases, use san_rest_port '
-                        'instead')
             self.restapi_port = self.configuration.nexenta_rest_port
         else:
-            self.restapi_port = self.configuration.san_rest_port
+            self.restapi_port = self.configuration.san_api_port
 
         if self.configuration.nexenta_client_address:
-            LOG.warning('nexenta_client_address parameter is deprecated and '
-                        'will be removed in upcoming releases, use '
-                        'target_ip_address instead')
             self.target_vip = self.configuration.nexenta_client_address
         else:
             self.target_vip = self.configuration.target_ip_address
-
+        if self.configuration.nexenta_rest_password:
+            self.restapi_password = (
+                self.configuration.nexenta_rest_password)
+        else:
+            self.restapi_password = (
+                self.configuration.san_password)
+        if self.configuration.nexenta_rest_user:
+            self.restapi_user = self.configuration.nexenta_rest_user
+        else:
+            self.restapi_user = self.configuration.san_login
         self.verify_ssl = self.configuration.driver_ssl_cert_verify
         self.restapi_protocol = self.configuration.nexenta_rest_protocol
-        self.restapi_user = self.configuration.nexenta_rest_user
-        self.restapi_password = self.configuration.nexenta_rest_password
         self.iscsi_service = self.configuration.nexenta_iscsi_service
         self.bucket_path = self.configuration.nexenta_lun_container
         self.blocksize = self.configuration.nexenta_blocksize
@@ -167,7 +166,8 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
             'blockSize': self.blocksize,
             'chunkSize': self.chunksize,
             'optionsObject': {
-                'ccow-replication-count': self.repcount}
+                'ccow-replication-count': self.repcount,
+                'ccow-iops-rate-lim': self.configuration.nexenta_iops_limit}
         }
         if self.encryption:
             data['optionsObject']['ccow-encryption-enabled'] = True
@@ -201,6 +201,22 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
 
     def remove_export(self, context, volume):
         pass
+
+    def initialize_connection(self, volume, connector):
+        return {
+            'driver_volume_type': 'iscsi',
+            'data': {
+                'target_discovered': False,
+                'encrypted': False,
+                'qos_specs': None,
+                'target_iqn': self.target_name,
+                'target_portal': '%s:%s' % (
+                    self.target_vip, self.iscsi_target_port),
+                'volume_id': volume['id'],
+                'target_lun': self._get_lu_number(volume['name']),
+                'access_mode': 'rw',
+            }
+        }
 
     def extend_volume(self, volume, new_size):
         try:
