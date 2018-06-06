@@ -232,8 +232,8 @@ class NexentaNfsDriver(nfs.NfsDriver):
         :param volume: a dictionary describing the volume to migrate
         :param host: a dictionary describing the host to migrate to
         """
-        LOG.debug('Enter: migrate_volume: id=%(id)s, host=%(host)s',
-                  {'id': volume['id'], 'host': host})
+        LOG.debug('Enter: migrate_volume: name=%(name)s, host=%(host)s',
+                  {'name': volume['name'], 'host': host})
 
         false_ret = (False, None)
 
@@ -284,7 +284,7 @@ class NexentaNfsDriver(nfs.NfsDriver):
         url = 'hpr/services/%s/start' % svc_name
         self.nef.post(url)
         provider_location = '/'.join([
-            capabilities['location_info'].strip(dst_driver_name).strip(':'),
+            capabilities['location_info'].lstrip('%s:' % dst_driver_name),
             volume['name']])
 
         params = (
@@ -319,7 +319,7 @@ class NexentaNfsDriver(nfs.NfsDriver):
     def initialize_connection(self, volume, connector):
         LOG.debug('Initialize volume connection for %s', volume['name'])
         url = 'hpr/activate'
-        data = {'datasetName': volume['provider_location'].split(':/')[1]}
+        data = {'datasetName': '/'.join([self.share, volume['name']])}
         self.nef.post(url, data)
         data = {'export': volume['provider_location'], 'name': 'volume'}
         return {
