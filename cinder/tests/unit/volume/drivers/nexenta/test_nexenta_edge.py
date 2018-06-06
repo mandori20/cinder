@@ -82,6 +82,7 @@ class TestNexentaEdgeISCSIDriver(test.TestCase):
         self.cfg.nexenta_replication_count = 2
         self.cfg.nexenta_encryption = True
         self.cfg.replication_device = None
+        self.cfg.nexenta_iops_limit = 0
 
         mock_exec = mock.Mock()
         mock_exec.return_value = ('', '')
@@ -158,7 +159,8 @@ class TestNexentaEdgeISCSIDriver(test.TestCase):
             'chunkSize': NEDGE_CHUNKSIZE,
             'optionsObject': {
                 'ccow-replication-count': 2,
-                'ccow-encryption-enabled': True}
+                'ccow-encryption-enabled': True,
+                'ccow-iops-rate-lim': 0}
         })
 
     @patch('cinder.volume.drivers.nexenta.nexentaedge.iscsi.'
@@ -175,7 +177,8 @@ class TestNexentaEdgeISCSIDriver(test.TestCase):
             'vip': self.cfg.nexenta_client_address + '/32',
             'optionsObject': {
                 'ccow-replication-count': 2,
-                'ccow-encryption-enabled': True}
+                'ccow-encryption-enabled': True,
+                'ccow-iops-rate-lim': 0}
         })
 
     def test_create_volume_fail(self):
