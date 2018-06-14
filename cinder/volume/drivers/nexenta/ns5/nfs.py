@@ -449,9 +449,13 @@ class NexentaNfsDriver(nfs.NfsDriver):
                     self.nef.delete(url)
             else:
                 raise ex
-        if origin and 'clone' in origin:
-            url = 'storage/snapshots/%s' % urllib.parse.quote_plus(origin)
-            self.nef.delete(url)
+        if origin:
+            try:
+                ctxt = context.get_admin_context()
+                self.db.snapshot_get(ctxt, origin.split('@')[-1])
+            except exception.SnapshotNotFound:
+                url = 'storage/snapshots/%s' % urllib.parse.quote_plus(origin)
+                self.nef.delete(url)
 
     def _delete(self, path):
         try:
