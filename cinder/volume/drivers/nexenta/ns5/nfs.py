@@ -505,9 +505,9 @@ class NexentaNfsDriver(nfs.NfsDriver):
         :param snapshot: snapshot reference
         """
         volume = self._get_snapshot_volume(snapshot)
-        LOG.info('Create snapshot %(snapshot) for volume %(volume)s',
-                 {'snapshot': snapshot['name'],
-                  'volume': volume['name']})
+        LOG.debug('Create snapshot %(snapshot)s for volume %(volume)s',
+                  {'snapshot': snapshot['name'],
+                   'volume': volume['name']})
         pool, fs = self._get_share_datasets(self.share)
         url = 'storage/snapshots'
 
