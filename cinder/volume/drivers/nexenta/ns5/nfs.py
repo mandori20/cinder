@@ -23,6 +23,7 @@ from oslo_utils import units
 from six.moves import urllib
 
 from cinder import context
+from cinder import coordination
 from cinder import db
 from cinder import exception
 from cinder.i18n import _
@@ -32,7 +33,7 @@ from cinder.volume.drivers.nexenta import options
 from cinder.volume.drivers.nexenta import utils
 from cinder.volume.drivers import nfs
 
-VERSION = '1.6.5'
+VERSION = '1.6.6'
 LOG = logging.getLogger(__name__)
 BLOCK_SIZE_MB = 1
 
@@ -58,6 +59,7 @@ class NexentaNfsDriver(nfs.NfsDriver):
         1.6.3 - Adapted NexentaException for the latest Cinder.
         1.6.4 - Fixed volume mount/unmount.
         1.6.5 - Added driver_ssl_cert_verify for HA failover.
+        1.6.6 - Destroy unused snapshots after deletion of it's last clone.
     """
 
     driver_prefix = 'nexenta'
@@ -435,6 +437,7 @@ class NexentaNfsDriver(nfs.NfsDriver):
             'mount_point_base': self.nfs_mount_point_base
         }
 
+    @coordination.synchronized('NEF')
     def delete_volume(self, volume):
         """Deletes a logical volume.
 
@@ -445,11 +448,11 @@ class NexentaNfsDriver(nfs.NfsDriver):
         pool, fs = self._get_share_datasets(self.share)
         url = 'storage/filesystems?path=%s' % '%2F'.join(
             [pool, fs, volume['name']])
-        if not self.nef.get(url).get('data'):
+        fs_data = self.nef.get(url).get('data')
+        if not fs_data:
             return
         self._unmount_volume(volume)
-        field = 'originalSnapshot'
-        origin = self.nef.get(url).get(field)
+        origin = fs_data[0].get('originalSnapshot')
         url = 'storage/filesystems/%s?force=true&snapshots=true' % '%2F'.join(
             [pool, fs, volume['name']])
         try:
@@ -461,9 +464,9 @@ class NexentaNfsDriver(nfs.NfsDriver):
                     [pool, fs, volume['name']])
                 snap_map = {}
                 for snap in self.nef.get(url)['data']:
-                    url = 'storage/snapshots?path=%s' % (
+                    url = 'storage/snapshots/%s' % (
                         urllib.parse.quote_plus(snap['path']))
-                    data = self.nef.get(url).get('data')[0]
+                    data = self.nef.get(url)
                     if data and data.get('clones'):
                         snap_map[data['creationTxg']] = snap['path']
                 if snap_map:
@@ -480,9 +483,13 @@ class NexentaNfsDriver(nfs.NfsDriver):
                     self.nef.delete(url)
             else:
                 raise ex
-        if origin and 'clone' in origin:
-            url = 'storage/snapshots/%s' % urllib.parse.quote_plus(origin)
-            self.nef.delete(url)
+        if origin:
+            try:
+                ctxt = context.get_admin_context()
+                self.db.snapshot_get(ctxt, origin.split('@')[-1])
+            except exception.SnapshotNotFound:
+                url = 'storage/snapshots/%s' % urllib.parse.quote_plus(origin)
+                self.nef.delete(url)
 
     def _delete(self, path):
         try:
@@ -537,6 +544,7 @@ class NexentaNfsDriver(nfs.NfsDriver):
                                    snapshot['name'])}
         self.nef.post(url, data)
 
+    @coordination.synchronized('NEF')
     def delete_snapshot(self, snapshot):
         """Deletes a snapshot.
 
@@ -546,6 +554,12 @@ class NexentaNfsDriver(nfs.NfsDriver):
                   {'snapshot': snapshot['name']})
         volume = self._get_snapshot_volume(snapshot)
         pool, fs = self._get_share_datasets(self.share)
+        path = '%s@%s' % ('%2F'.join([pool, fs, volume['name']]),
+                          snapshot['name'])
+        url = 'storage/snapshots?path=%s' % path
+        snap_data = self.nef.get(url).get('data')
+        if not snap_data:
+            return
         url = 'storage/snapshots/%s@%s' % ('%2F'.join(
             [pool, fs, volume['name']]), snapshot['name'])
         try:
@@ -553,7 +567,7 @@ class NexentaNfsDriver(nfs.NfsDriver):
         except exception.NexentaException as ex:
             err = utils.ex2err(ex)
             if (err['code'] == 'EBUSY' and
-                'Dependent datasets' in err['message']):
+                    'Dependent datasets' in err['message']):
                 LOG.debug('Snapshot %(snapshot)s has dependent '
                           'clones, it will be deleted later',
                           {'snapshot': snapshot['name']})
