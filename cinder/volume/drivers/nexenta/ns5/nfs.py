@@ -463,9 +463,9 @@ class NexentaNfsDriver(nfs.NfsDriver):
                     [pool, fs, volume['name']])
                 snap_map = {}
                 for snap in self.nef.get(url)['data']:
-                    url = 'storage/snapshots?path=%s' % (
+                    url = 'storage/snapshots/%s' % (
                         urllib.parse.quote_plus(snap['path']))
-                    data = self.nef.get(url).get('data')[0]
+                    data = self.nef.get(url)
                     if data and data.get('clones'):
                         snap_map[data['creationTxg']] = snap['path']
                 if snap_map:
