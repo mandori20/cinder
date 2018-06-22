@@ -33,7 +33,7 @@ from cinder.volume.drivers.nexenta import options
 from cinder.volume.drivers.nexenta import utils
 from cinder.volume.drivers import nfs
 
-VERSION = '1.6.5'
+VERSION = '1.6.6'
 LOG = logging.getLogger(__name__)
 BLOCK_SIZE_MB = 1
 
@@ -59,6 +59,7 @@ class NexentaNfsDriver(nfs.NfsDriver):
         1.6.3 - Adapted NexentaException for the latest Cinder.
         1.6.4 - Fixed volume mount/unmount.
         1.6.5 - Added driver_ssl_cert_verify for HA failover.
+        1.6.6 - Destroy unused snapshots after deletion of it's last clone.
     """
 
     driver_prefix = 'nexenta'
