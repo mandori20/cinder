@@ -280,8 +280,8 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
     def revert_to_snapshot(self, context, volume, snapshot):
         """Revert volume to snapshot."""
         LOG.debug('Revert volume %(volume)s to snapshot %(snapshot)s',
-                 {'volume': volume['name'],
-                  'snapshot': snapshot['name']})
+                  {'volume': volume['name'],
+                   'snapshot': snapshot['name']})
         volume_path = self._get_volume_path(volume)
         url = 'storage/volumes/%s/rollback' % urllib.parse.quote_plus(
             volume_path)
@@ -294,8 +294,8 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
         :param snapshot: reference of source snapshot
         """
         LOG.debug('Create volume %(volume)s from snapshot: %(snapshot)s',
-                 {'volume': volume['name'],
-                  'snapshot': snapshot['name']})
+                  {'volume': volume['name'],
+                   'snapshot': snapshot['name']})
         snapshot_vol = self._get_snapshot_volume(snapshot)
         path = '%2F'.join([
             self.storage_pool, self.volume_group, snapshot_vol['name']])
